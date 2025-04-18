@@ -1,4 +1,4 @@
-import { Component } from '@angular/core'
+import { Component, signal } from '@angular/core'
 import { BlocksService } from 'src/app/services/blocks.service'
 
 @Component({
@@ -8,20 +8,20 @@ import { BlocksService } from 'src/app/services/blocks.service'
   standalone: false
 })
 export class MyMutesComponent {
-  loading = true
+  loading = signal<boolean>(true);
   mutedUsers: Array<any> = []
   displayedColumns = ['muted', 'actions']
 
   constructor(private blocksService: BlocksService) {
     this.blocksService.getMuteList().then((response) => {
       this.mutedUsers = response
-      this.loading = false
+      this.loading.set(false);
     })
   }
 
   async unmuteUser(id: string) {
-    this.loading = true
+    this.loading.set(true);
     this.mutedUsers = await this.blocksService.unmuteUser(id)
-    this.loading = false
+    this.loading.set(false);
   }
 }

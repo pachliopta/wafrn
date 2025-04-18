@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, input, Input, model, OnChanges, OnDestroy, OnInit, output, Output, signal } from '@angular/core'
 import { ProcessedPost } from 'src/app/interfaces/processed-post'
 import { EditorService } from 'src/app/services/editor.service'
 import { LoginService } from 'src/app/services/login.service'
@@ -34,42 +34,22 @@ import { environment } from 'src/environments/environment'
   selector: 'app-post',
   templateUrl: './post.component.html',
   styleUrls: ['./post.component.scss'],
-  standalone: false
+  standalone: false,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PostComponent implements OnInit, OnDestroy, OnChanges {
-  @Input() post!: ProcessedPost[]
-  showFull: boolean = false
-  postCanExpand = computed(() => {
-    let textLength = 0
-    if (this.originalPostContent) {
-      textLength = this.originalPostContent.map((elem) => elem.content).join('').length
-      this.originalPostContent.map((block) => block.content).join('').length
-    }
-    return (
-      ((textLength > 2500 || !this.showFull) && !this.expanded()) ||
-      !(this.post.length === this.originalPostContent.length)
-    )
-  })
-  postsExpanded = EnvironmentService.environment.shortenPosts
+export class PostComponent implements OnInit, OnDestroy {
+  post = model.required<ProcessedPost[]>();
+  showFull = signal<boolean>(false);
+  postsExpanded = signal<number>(EnvironmentService.environment.shortenPosts);
   expanded = signal(false)
-  originalPostContent: ProcessedPost[] = []
-  finalPosts: ProcessedPost[] = []
-  ready = false
-  mediaBaseUrl = EnvironmentService.environment.baseMediaUrl
-  cacheurl = EnvironmentService.environment.externalCacheurl
+  originalPostContent = signal<ProcessedPost[]>([]);
+  finalPosts = signal<ProcessedPost[]>([]);
+  headerText = signal<string>('');
+
   userLoggedIn = false
   followedUsers: string[] = []
   notYetAcceptedFollows: string[] = []
-  notes: string = '---'
-  headerText: string = ''
-  quickReblogBeingDone = false
-  quickReblogDoneSuccessfully = false
-  reblogging = false
   myId: string = ''
-  loadingAction = false
-  // 0 no display at all 1 display like 2 display dislike
-  showLikeFinalPost: number = 0
-  finalPost!: ProcessedPost
 
   // icons
   shareIcon = faShareNodes
@@ -94,16 +74,30 @@ export class PostComponent implements OnInit, OnDestroy, OnChanges {
   updateFollowersSubscription
   updateLikesSubscription
 
-  // post seen
-  @Output() seenEmitter: EventEmitter<boolean> = new EventEmitter<boolean>()
+  // Computed Vars
+  // 0 no display at all 1 display like 2 display dislike
+  finalPost = computed(() => {
+    const postToEvaluate =
+      this.isEmptyReblog() && this.post().length > 1 ? this.post()[this.post().length - 2] : this.post()[this.post().length - 1];
+    return postToEvaluate;
+  });
 
-  // dismiss cw
-  showCw = true
+  postCanExpand = computed(() => {
+    let textLength = 0
+    if (this.originalPostContent()) {
+      textLength = this.originalPostContent().map((elem) => elem.content).join('').length
+      this.originalPostContent().map((block) => block.content).join('').length
+    }
+    return (
+      ((textLength > 2500 || !this.showFull()) && !this.expanded()) ||
+      !(this.post().length === this.originalPostContent().length)
+    )
+  })
 
-  // VARIABLES FOR TEMPLATE RENDERING
-  ribbonUser: SimplifiedUser | undefined
-  ribbonIcon = this.replyIcon
-  ribbonTime = new Date(0)
+  notes = computed<string>(() => {
+    let notes = this.post()[this.post().length - 1].notes;
+    return notes.toString();
+  });
 
   constructor(
     public postService: PostsService,
@@ -119,13 +113,13 @@ export class PostComponent implements OnInit, OnDestroy, OnChanges {
     })
 
     this.updateLikesSubscription = this.postService.postLiked.subscribe((likeEvent) => {
-      if (this.post && likeEvent.id === this.post[this.post.length - 1].id) {
+      if (likeEvent.id === this.post()[this.post().length - 1].id) {
         if (likeEvent.like) {
-          this.originalPostContent[this.originalPostContent.length - 1].userLikesPostRelations = [
+          this.originalPostContent()[this.originalPostContent().length - 1].userLikesPostRelations = [
             this.loginService.getLoggedUserUUID()
           ]
         } else {
-          this.originalPostContent[this.originalPostContent.length - 1].userLikesPostRelations = []
+          this.originalPostContent()[this.originalPostContent().length - 1].userLikesPostRelations = []
         }
       }
     })
@@ -139,28 +133,25 @@ export class PostComponent implements OnInit, OnDestroy, OnChanges {
   ngOnInit(): void {
     this.followedUsers = this.postService.followedUserIds
     this.notYetAcceptedFollows = this.postService.notYetAcceptedFollowedUsersIds
-    this.originalPostContent = this.post
-    this.finalPosts = this.originalPostContent.slice(-5)
-    if (!this.showFull) {
-      this.post = this.post.slice(0, EnvironmentService.environment.shortenPosts)
+    this.originalPostContent.set(this.post());
+    this.finalPosts.set(this.originalPostContent().slice(-5));
+    if (!this.showFull()) {
+      this.post.update((post) => { return post.slice(0, EnvironmentService.environment.shortenPosts) });
 
-      if (this.originalPostContent.length === this.post.length) {
-        this.showFull = true
+      if (this.originalPostContent().length === this.post().length) {
+        this.showFull.set(true);
       }
     }
-    this.ribbonUser = this.originalPostContent[this.originalPostContent.length - 1].user
-    this.ribbonIcon = this.headerText === 'replied' ? this.replyIcon : this.reblogIcon
-    this.ribbonTime = this.originalPostContent[this.originalPostContent.length - 1].createdAt
     // If user has marked autoexpand we force 1 expand. Doing full could cause EXPLOSIONS
     if (localStorage.getItem('automaticalyExpandPosts') === 'true') {
       this.expandPost()
     }
+    this.headerText.set(this.isEmptyReblog() ? 'rewooted' : 'replied');
   }
 
   isEmptyReblog() {
-    const finalOne = this.post[this.post.length - 1]
+    const finalOne = this.post()[this.post().length - 1]
     return (
-      this.post &&
       finalOne.content == '' &&
       finalOne.tags.length == 0 &&
       finalOne.quotes.length == 0 &&
@@ -169,27 +160,9 @@ export class PostComponent implements OnInit, OnDestroy, OnChanges {
     )
   }
 
-  ngOnChanges() {
-    this.ready = true
-    const notes = this.post[this.post.length - 1].notes
-    this.notes = notes.toString()
-
-    // if the last post is an EMPTY reblog we evaluate the like of the parent.
-    const postToEvaluate =
-      this.isEmptyReblog() && this.post.length > 1 ? this.post[this.post.length - 2] : this.post[this.post.length - 1]
-    this.finalPost = postToEvaluate
-    this.headerText = this.isEmptyReblog() ? 'rewooted' : 'replied'
-
-    this.showLikeFinalPost = postToEvaluate.userLikesPostRelations.includes(this.myId) ? 2 : 1
-
-    if (postToEvaluate.userId === this.myId) {
-      this.showLikeFinalPost = 0
-    }
-  }
-
   expandPost() {
     this.expanded.set(true)
-    this.postsExpanded = this.postsExpanded + 100
-    this.post = this.originalPostContent.slice(0, this.postsExpanded)
+    this.postsExpanded.update((pe) => { return pe + 100 });
+    this.post.update(() => { return this.originalPostContent().slice(0, this.postsExpanded()) });
   }
 }

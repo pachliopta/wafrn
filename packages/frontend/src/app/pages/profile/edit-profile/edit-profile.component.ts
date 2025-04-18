@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core'
+import { Component, OnInit, signal } from '@angular/core'
 import { FormControl, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms'
 import { BlogDetails } from 'src/app/interfaces/blogDetails'
 import { Emoji } from 'src/app/interfaces/emoji'
@@ -16,7 +16,7 @@ import { ThemeService } from 'src/app/services/theme.service'
   standalone: false
 })
 export class EditProfileComponent implements OnInit {
-  loading = true
+  loading = signal<boolean>(true);
   img: File | undefined = undefined
   headerImg: File | undefined = undefined
   privacyOptions = [
@@ -121,9 +121,9 @@ export class EditProfileComponent implements OnInit {
       if (fediAttachments) {
         try {
           this.fediAttachments = JSON.parse(fediAttachments.optionValue)
-        } catch (error) {}
+        } catch (error) { }
       }
-      this.loading = false
+      this.loading.set(false);
     })
   }
 
@@ -140,7 +140,7 @@ export class EditProfileComponent implements OnInit {
   }
 
   async onSubmit() {
-    this.loading = true
+    this.loading.set(true);
     try {
       const res = await this.loginService.updateProfile(
         { ...this.editProfileForm.value, attachments: this.getAttachmentValue() },
@@ -159,7 +159,7 @@ export class EditProfileComponent implements OnInit {
       })
       console.error(error)
     }
-    this.loading = false
+    this.loading.set(false);
   }
 
   emojiClicked(emoji: Emoji) {

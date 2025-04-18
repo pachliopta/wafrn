@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core'
+import { ChangeDetectionStrategy, Component, input } from '@angular/core'
 import { MatCardModule } from '@angular/material/card'
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'
 
@@ -6,8 +6,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'
   selector: 'app-loader',
   imports: [MatCardModule, MatProgressSpinnerModule],
   templateUrl: './loader.component.html',
-  styleUrl: './loader.component.scss'
+  styleUrl: './loader.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoaderComponent {
-  @Input() text = 'Loading'
+  text = input<string>('Loading');
 }

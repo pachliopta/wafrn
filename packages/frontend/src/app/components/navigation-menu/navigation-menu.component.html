@@ -2,8 +2,8 @@
   <mat-drawer
     style="position: fixed"
     class="side-menu"
-    [mode]="mobile ? 'over' : 'side'"
-    [opened]="menuVisible || !mobile"
+    [mode]="mobile() ? 'over' : 'side'"
+    [opened]="menuVisible() || !mobile()"
     (closed)="hideMenu()"
   >
     <a [href]="'/'" class="block" (click)="hideMenu()">
@@ -18,7 +18,7 @@
     <hr />
     <nav aria-label="Navigation menu">
       <mat-nav-list>
-        @for (link of menuItems; track $index) {
+        @for (link of menuItems(); track $index) {
           @if (link.divider) {
             <hr />
           } @else {
@@ -32,17 +32,18 @@
     </div>
   </mat-drawer>
   <mat-drawer-content>
+    @let notificationCount = notifications() + adminNotifications() + usersAwaitingApproval() + followsAwaitingApproval() + awaitingAsks();
     <button
       style="position: fixed; z-index: 500; top: 1em; left: 1em"
       mat-mini-fab
       color="primary"
-      [hidden]="!mobile"
+      [hidden]="!mobile()"
       type="button"
       class="show-sidebar-menu-button"
       (click)="showMenu()"
-      [matBadge]="notifications + adminNotifications + usersAwaitingApproval + followsAwaitingApproval + awaitingAsks"
+      [matBadge]="notificationCount"
       [matBadgeHidden]="
-        notifications + adminNotifications + usersAwaitingApproval + followsAwaitingApproval + awaitingAsks === 0
+        notificationCount === 0
       "
       matBadgePosition="below"
     >
@@ -52,7 +53,7 @@
       style="position: fixed; z-index: 500; bottom: 1em; right: 1em"
       mat-fab
       color="primary"
-      [hidden]="!mobile || !jwtService.tokenValid() || currentRoute === '/editor'"
+      [hidden]="!mobile() || !jwtService.tokenValid() || currentRoute === '/editor'"
       type="button"
       class="show-sidebar-menu-button create-post-button"
       (click)="this.hideMenu(); this.openEditor()"

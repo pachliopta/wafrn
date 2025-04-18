@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select'
 import { MatCheckboxModule } from '@angular/material/checkbox'
 import { EmojiCollectionsComponent } from 'src/app/components/emoji-collections/emoji-collections.component'
 import { MatExpansionModule } from '@angular/material/expansion'
+import { LoaderComponent } from 'src/app/components/loader/loader.component'
 
 const routes: Routes = [
   {
@@ -33,7 +34,8 @@ const routes: Routes = [
     MatSelectModule,
     MatCheckboxModule,
     EmojiCollectionsComponent,
-    MatExpansionModule
+    MatExpansionModule,
+    LoaderComponent
   ]
 })
-export class EditProfileModule {}
+export class EditProfileModule { }

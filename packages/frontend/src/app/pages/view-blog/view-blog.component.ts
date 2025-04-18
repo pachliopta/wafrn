@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core'
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, signal } from '@angular/core'
 import { Meta, Title } from '@angular/platform-browser'
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router'
 import {
@@ -25,11 +25,12 @@ import { EnvironmentService } from 'src/app/services/environment.service'
   selector: 'app-view-blog',
   templateUrl: './view-blog.component.html',
   styleUrls: ['./view-blog.component.scss'],
-  standalone: false
+  standalone: false,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ViewBlogComponent implements OnInit, OnDestroy {
-  loading = false
-  noMorePosts = false
+  loading = signal<boolean>(false);
+  noMorePosts = signal<boolean>(false);
   found = true
   viewedPosts = 0
   currentPage = 0
@@ -37,7 +38,7 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
   blogUrl: string = ''
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  blogDetails!: BlogDetails
+  blogDetails = signal<BlogDetails | undefined>(undefined);
   userLoggedIn = false
   avatarUrl = ''
   navigationSubscription!: Subscription
@@ -92,6 +93,7 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
           this.handleTheme()
           return;
         }
+        this.loading.set(true);
         this.blogUrl = ''
         this.avatarUrl = ''
         this.configureUser(true)
@@ -118,25 +120,25 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
 
     const blogResponse = await this.dashboardService.getBlogDetails(this.blogUrl).catch(() => {
       this.found = false
-      this.loading = false
+      this.loading.set(false);
     })
     if (blogResponse) {
-      this.blogDetails = blogResponse
-      this.avatarUrl = this.blogDetails.url.startsWith('@')
-        ? EnvironmentService.environment.externalCacheurl + encodeURIComponent(this.blogDetails.avatar)
+      this.blogDetails.set(blogResponse);
+      this.avatarUrl = blogResponse.url.startsWith('@')
+        ? EnvironmentService.environment.externalCacheurl + encodeURIComponent(blogResponse.avatar)
         : EnvironmentService.environment.externalCacheurl +
-        encodeURIComponent(EnvironmentService.environment.baseMediaUrl + this.blogDetails.avatar)
-      this.titleService.setTitle(`${this.blogDetails.url}'s blog`)
+        encodeURIComponent(EnvironmentService.environment.baseMediaUrl + blogResponse.avatar)
+      this.titleService.setTitle(`${blogResponse.url}'s blog`)
       this.metaTagService.addTags([
         {
           name: 'description',
-          content: `${this.blogDetails.url}'s wafrn blog`
+          content: `${blogResponse.url}'s wafrn blog`
         },
-        { name: 'author', content: this.blogDetails.url },
+        { name: 'author', content: blogResponse.url },
         { name: 'image', content: this.avatarUrl }
       ])
       if (reload) {
-        this.loading = false
+        this.loading.set(false);
         this.reloadPosts()
 
       }
@@ -154,13 +156,13 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
 
 
   handleTheme() {
-    const userHasCustomTheme = !this.blogDetails.url.startsWith('@') //await this.themeService.checkThemeExists(this.blogDetails?.id);
+    const userHasCustomTheme = !this.blogDetails()!.url.startsWith('@') //await this.themeService.checkThemeExists(this.blogDetails?.id);
 
     if (userHasCustomTheme) {
       let userResponseToCustomThemes = this.themeService.hasUserAcceptedCustomThemes()
 
       if (userResponseToCustomThemes === 2) {
-        this.themeService.setTheme(this.blogDetails.id)
+        this.themeService.setTheme(this.blogDetails()!.id)
       }
 
       if (userResponseToCustomThemes === 0) {
@@ -168,7 +170,7 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
         dialogRef.afterClosed().subscribe(() => {
           userResponseToCustomThemes = this.themeService.hasUserAcceptedCustomThemes()
           if (userResponseToCustomThemes === 2) {
-            this.themeService.setTheme(this.blogDetails.id)
+            this.themeService.setTheme(this.blogDetails()!.id)
           }
         })
       }
@@ -179,7 +181,7 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
 
 
   reloadPosts() {
-    if (this.loading) return;
+    if (this.loading()) return;
     window.scrollTo(0, 0)
     this.posts = []
     this.currentPage = 0
@@ -192,12 +194,12 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
     if (this.blogUrl === '') { return };
 
     if (this.blogDetails === undefined) { return }
-    if (!this.userLoggedIn && this.blogDetails.url.startsWith('@')) {
-      this.loading = false;
-      this.noMorePosts = true;
+    if (!this.userLoggedIn && this.blogDetails()!.url.startsWith('@')) {
+      this.loading.set(false);
+      this.noMorePosts.set(true);
       return;
     }
-    this.loading = true
+    this.loading.set(true);
     const tmpPosts = await this.dashboardService.getBlogPage(page, this.blogUrl)
     const filteredPosts = tmpPosts.filter((post: ProcessedPost[]) => {
       let allFragmentsSeen = true
@@ -213,9 +215,9 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
     filteredPosts.forEach((post) => {
       this.posts.push(post)
     })
-    this.loading = false
+    this.loading.set(false);
     if (tmpPosts.length === 0) {
-      this.noMorePosts = true
+      this.noMorePosts.set(true);
     }
   }
 }

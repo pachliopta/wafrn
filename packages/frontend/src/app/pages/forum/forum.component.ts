@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, OnDestroy } from '@angular/core'
+import { Component, OnDestroy, signal } from '@angular/core'
 import { MatButtonModule } from '@angular/material/button'
 import { MatCardModule } from '@angular/material/card'
 import { ActivatedRoute, RouterModule } from '@angular/router'
@@ -41,7 +41,7 @@ import { PostRibbonComponent } from 'src/app/components/post-ribbon/post-ribbon.
   styleUrl: './forum.component.scss'
 })
 export class ForumComponent implements OnDestroy {
-  loading = true
+  loading = signal<boolean>(true);
   forumPosts: ProcessedPost[] = []
   post: ProcessedPost[] = []
   subscription: Subscription
@@ -83,7 +83,7 @@ export class ForumComponent implements OnDestroy {
       this.myId = loginService.getLoggedUserUUID()
     }
     this.subscription = this.route.params.subscribe(async (data: any) => {
-      this.loading = true
+      this.loading.set(true);
       let postId: string = ''
       if (data.id) {
         postId = data.id
@@ -95,7 +95,7 @@ export class ForumComponent implements OnDestroy {
       }
       const tmpForumPosts = this.forumService.getForumThread(postId)
       this.forumPosts = await tmpForumPosts
-      this.loading = false
+      this.loading.set(false);
     })
   }
   ngOnDestroy(): void {
@@ -116,12 +116,12 @@ export class ForumComponent implements OnDestroy {
   }
 
   async loadRepliesFromFediverse() {
-    this.loading = true
+    this.loading.set(true);
     await this.postService.loadRepliesFromFediverse(this.post[this.post.length - 1].id)
     this.forumPosts = await this.forumService.getForumThread(this.post[this.post.length - 1].id)
     this.itemsPerPage = 50
     this.currentPage = 0
-    this.loading = false
+    this.loading.set(false);
   }
 
   changePage(event: PageEvent) {

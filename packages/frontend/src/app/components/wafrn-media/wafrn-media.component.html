@@ -6,7 +6,7 @@
       @if (
         (!extensionsToHideImgTag.includes(extension()) || mimeType() === 'UNKNOWN') && !mimeType().startsWith('video')
       ) {
-        @let forceImg = (displayUrl() && !nsfw) ? displayUrl() : 'data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAC4jAAAuIwF4pT92AAAADUlEQVQIW2NgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==';
+        @let forceImg = (displayUrl() && !nsfw()) ? displayUrl() : 'data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAC4jAAAuIwF4pT92AAAADUlEQVQIW2NgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==';
         <img
           *ngIf="!errorMode"
           [src]="forceImg"
@@ -15,7 +15,7 @@
           [height]="height()"
           loading="lazy"
           (error)="handleError()"
-          [style.aspect-ratio]="nsfw ? aspectRatio() : ''"
+          [style.aspect-ratio]="nsfw() ? aspectRatio() : ''"
           [ngClass]="{
             'displayed-image': true
           }"
@@ -28,8 +28,8 @@
           (play)="showPicture()"
           preload="metadata"
           [ngClass]="{
-            nsfw: nsfw,
-            'displayed-image': !nsfw
+            nsfw: nsfw(),
+            'displayed-image': !nsfw()
           }"
           width="{{ width() }}"
           height="{{ height() }}"
@@ -40,7 +40,7 @@
       }
     </div>
 
-    @if (nsfw) {
+    @if (nsfw()) {
       <div class="flex flex-column justify-content-center align-items-center image-cw-text" >
         <p>This media contains sensitive content</p>
         <button mat-raised-button (click)="showPicture()">Show media</button>
@@ -76,7 +76,7 @@
         <button
           class="m-2 toggle-button toggle-nsfw"
           mat-raised-button
-          (click)="$event.stopPropagation(); nsfw = !nsfw"
+          (click)="$event.stopPropagation(); nsfw.set(!nsfw())"
           title="Hide image"
           [ariaDescription]="'Hide image'"
         >

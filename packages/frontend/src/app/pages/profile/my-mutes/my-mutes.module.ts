@@ -8,6 +8,7 @@ import { MatCardModule } from '@angular/material/card'
 import { MatPaginatorModule } from '@angular/material/paginator'
 import { MatButtonModule } from '@angular/material/button'
 import { AvatarSmallComponent } from 'src/app/components/avatar-small/avatar-small.component'
+import { LoaderComponent } from 'src/app/components/loader/loader.component'
 
 @NgModule({
   declarations: [MyMutesComponent],
@@ -24,7 +25,8 @@ import { AvatarSmallComponent } from 'src/app/components/avatar-small/avatar-sma
     MatCardModule,
     MatPaginatorModule,
     MatButtonModule,
-    AvatarSmallComponent
+    AvatarSmallComponent,
+    LoaderComponent
   ]
 })
-export class MyMutesModule {}
+export class MyMutesModule { }

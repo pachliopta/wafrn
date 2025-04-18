@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges, input } from '@angular/core'
+import { ChangeDetectionStrategy, Component, input, OnDestroy, OnInit, signal } from '@angular/core'
 import { AvatarSmallComponent } from '../../avatar-small/avatar-small.component'
 import { ProcessedPost } from '../../../interfaces/processed-post'
 import { CommonModule } from '@angular/common'
@@ -9,6 +9,7 @@ import { LoginService } from '../../../services/login.service'
 import { PostActionsComponent } from '../../post-actions/post-actions.component'
 import { MatTooltipModule } from '@angular/material/tooltip'
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome'
+import { interval, Subscription } from 'rxjs';
 import {
   faShareNodes,
   faChevronDown,
@@ -43,13 +44,16 @@ import { DateTime } from 'luxon'
     MatTooltipModule
   ],
   templateUrl: './post-header.component.html',
-  styleUrl: './post-header.component.scss'
+  styleUrl: './post-header.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PostHeaderComponent implements OnChanges {
-  @Input() fragment!: ProcessedPost
+export class PostHeaderComponent implements OnInit, OnDestroy {
+  fragment = input.required<ProcessedPost>();
   readonly simplified = input<boolean>(true);
   readonly disableLink = input<boolean>(false);
   readonly headerText = input<string>('');
+  edited = signal<boolean>(false);
+  timeAgo = signal<string>('');
   userLoggedIn = false
 
   // table for the icons. ATTENTION, PRIVACY 10 IS SET ON CONSTRUCTOR
@@ -77,23 +81,36 @@ export class PostHeaderComponent implements OnChanges {
   serverIcon = faServer
   userIcon = faUser
   editedIcon = faPen
-  edited = false
 
-  timeAgo = ''
+
+  timestampSubscription: Subscription;
 
   constructor(
     public postService: PostsService,
     private messages: MessageService,
     private loginService: LoginService
   ) {
+    // The timestamps update every 10 seconds
+    this.timestampSubscription = interval(10000).subscribe(() => {
+      this.updateTimestamp();
+    });
+
     // its an array
-    ;(this.privacyOptions[10] = { level: 10, name: 'Direct Message', icon: faEnvelope }),
+    ; (this.privacyOptions[10] = { level: 10, name: 'Direct Message', icon: faEnvelope }),
       (this.userLoggedIn = loginService.checkUserLoggedIn())
   }
-  ngOnChanges(changes: SimpleChanges): void {
-    const relative = DateTime.fromJSDate(this.fragment.createdAt).setLocale('en').toRelative()
-    this.timeAgo = relative ? relative : 'Error with date'
-    this.edited = this.fragment.updatedAt.getTime() - this.fragment.createdAt.getTime() > 6000
+  ngOnDestroy(): void {
+    this.timestampSubscription.unsubscribe();
+  }
+
+  ngOnInit(): void {
+    this.updateTimestamp();
+  }
+
+  updateTimestamp() {
+    const relative = DateTime.fromJSDate(this.fragment().createdAt).setLocale('en').toRelative()
+    this.timeAgo.set(relative ? relative : 'Error with date');
+    this.edited.set(this.fragment().updatedAt.getTime() - this.fragment().createdAt.getTime() > 6000);
   }
 
   async followUser(id: string) {

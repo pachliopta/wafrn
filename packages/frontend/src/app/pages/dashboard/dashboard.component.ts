@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core'
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, signal } from '@angular/core'
 import { NavigationSkipped, Router } from '@angular/router'
 import { ProcessedPost } from 'src/app/interfaces/processed-post'
 import { DashboardService } from 'src/app/services/dashboard.service'
@@ -15,12 +15,13 @@ import { filter } from 'rxjs/operators';
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-  standalone: false
+  standalone: false,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  loadingPosts = false
-  noMorePosts = false
-  posts: ProcessedPost[][] = []
+  loadingPosts = signal<boolean>(false);
+  noMorePosts = signal<boolean>(false);
+  posts = signal<ProcessedPost[][]>([]);
   viewedPostsNumber = 0
   viewedPostsIds: string[] = []
   currentPage = 0
@@ -131,8 +132,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Perhaps not a perfect solution, but without this guard currentPage and
     // startScroll may unexpectedly increase, leading to the dashboard
     // displaying posts that do not start from date.now
-    if (this.loadingPosts) return;
-    this.posts = []
+    if (this.loadingPosts()) return;
+    this.posts.set([]);
     this.currentPage = 0
     this.viewedPostsNumber = 0
     this.viewedPostsIds = []
@@ -149,14 +150,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async loadPosts(page: number) {
-    this.loadingPosts = true
+    this.loadingPosts.set(true);
     let scrollDate = new Date(this.timestamp)
     if (page == 0) {
       scrollDate = new Date()
       this.timestamp = scrollDate.getTime()
     }
     const tmpPosts = await this.dashboardService.getDashboardPage(scrollDate, this.level)
-    this.noMorePosts = tmpPosts.length === 0
+    this.noMorePosts.set(tmpPosts.length === 0);
     // we do the filtering here to avoid repeating posts. Also by doing it here we avoid flickering
     const filteredPosts = tmpPosts
       .filter((post: ProcessedPost[]) => {
@@ -181,40 +182,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // also some ads for RAID SHADOW LEGENDS. This is a joke.
     // but hey if you dont like it you delete that very easily ;D
     if (!this.jwtService.tokenValid()) {
-      this.posts.push([
-        {
-          hierarchyLevel: 0,
-          isRewoot: false,
-          quotes: [],
-          emojiReactions: [],
-          id: '872c9649-5043-460e-a9df-c35a568c8aef',
-          content_warning: '',
-          markdownContent: '',
-          content:
-            '<p>To fully enjoy this hellsite, please consider joining us, <a href="/register" rel="noopener noreferrer" target="_blank">register into wafrn!</a></p><p><br></p><p>bring your twisted ideas onto others, share recipies of cake that swap the flour for mayo or hot sauce!</p><p><br></p><p><br></p><p>Consider <a href="/register" rel="noopener noreferrer" target="_blank">joining wafrn</a>!</p>',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          userId: '40472b5b-b668-4156-b795-a60f2986e928',
-          user: {
-            avatar: '/1641804617334_2f7de58d61c79f0bca67869c5b375f74a3787a17.webp',
-            url: 'admin',
-            name: 'admin',
-            id: 'admin'
-          },
-          medias: [],
-          tags: [],
-          notes: 0,
-          remotePostId: '',
-          privacy: 0,
-          userLikesPostRelations: [],
-          emojis: [],
-          descendents: [],
-          bookmarkers: []
-        }
-      ])
+      this.posts.update((posts) => {
+        posts.push([
+          {
+            hierarchyLevel: 0,
+            isRewoot: false,
+            quotes: [],
+            emojiReactions: [],
+            id: '872c9649-5043-460e-a9df-c35a568c8aef',
+            content_warning: '',
+            markdownContent: '',
+            content:
+              '<p>To fully enjoy this hellsite, please consider joining us, <a href="/register" rel="noopener noreferrer" target="_blank">register into wafrn!</a></p><p><br></p><p>bring your twisted ideas onto others, share recipies of cake that swap the flour for mayo or hot sauce!</p><p><br></p><p><br></p><p>Consider <a href="/register" rel="noopener noreferrer" target="_blank">joining wafrn</a>!</p>',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            userId: '40472b5b-b668-4156-b795-a60f2986e928',
+            user: {
+              avatar: '/1641804617334_2f7de58d61c79f0bca67869c5b375f74a3787a17.webp',
+              url: 'admin',
+              name: 'admin',
+              id: 'admin'
+            },
+            medias: [],
+            tags: [],
+            notes: 0,
+            remotePostId: '',
+            privacy: 0,
+            userLikesPostRelations: [],
+            emojis: [],
+            descendents: [],
+            bookmarkers: []
+          }
+        ])
+        return posts;
+      });
     }
     filteredPosts.forEach((post) => {
-      this.posts.push(post)
+      this.posts.update((posts) => { posts.push(post); return posts; });
     })
     // if we get a lot of filtered posts, we might want to load the next page
     if (tmpPosts.length > 5 && filteredPosts.length < 5) {
@@ -222,6 +226,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.timestamp = this.timestamp - 1
       await this.loadPosts(this.currentPage)
     }
-    this.loadingPosts = false
+    this.loadingPosts.set(false);
   }
 }

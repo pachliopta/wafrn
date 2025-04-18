@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, signal, SimpleChanges } from '@angular/core'
+import { ChangeDetectionStrategy, Component, input, OnInit, signal } from '@angular/core'
 import { ProcessedPost } from '../../interfaces/processed-post'
 import { MessageService } from '../../services/message.service'
 
@@ -38,14 +38,15 @@ import { faBluesky } from '@fortawesome/free-brands-svg-icons'
   selector: 'app-post-actions',
   imports: [CommonModule, MatButtonModule, MatMenuModule, FontAwesomeModule],
   templateUrl: './post-actions.component.html',
-  styleUrl: './post-actions.component.scss'
+  styleUrl: './post-actions.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PostActionsComponent implements OnChanges {
-  @Input() content!: ProcessedPost
+export class PostActionsComponent implements OnInit {
+  content = input.required<ProcessedPost>();
+  myRewootsIncludePost = signal<boolean>(false);
+  postSilenced = signal<boolean>(false);
   userLoggedIn = false
   myId: string = 'user-00000000-0000-0000-0000-000000000000 '
-  postSilenced = false
-  myRewootsIncludePost = false;
   bookmarked = signal<boolean>(false);
 
   // icons
@@ -84,16 +85,13 @@ export class PostActionsComponent implements OnChanges {
   }
 
   ngOnInit(): void {
-    this.bookmarked.set(this.content.bookmarkers.includes(this.myId));
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    this.myRewootsIncludePost = this.postService.rewootedPosts.includes(this.content.id)
+    this.bookmarked.set(this.content().bookmarkers.includes(this.myId));
+    this.myRewootsIncludePost.set(this.postService.rewootedPosts.includes(this.content().id));
     this.checkPostSilenced()
   }
 
   sharePost() {
-    navigator.clipboard.writeText(`${EnvironmentService.environment.frontUrl}/fediverse/post/${this.content.id}`)
+    navigator.clipboard.writeText(`${EnvironmentService.environment.frontUrl}/fediverse/post/${this.content().id}`)
     this.messages.add({
       severity: 'success',
       summary: 'The woot URL was copied to your clipboard!'
@@ -101,10 +99,9 @@ export class PostActionsComponent implements OnChanges {
   }
 
   shareOriginalPost() {
-    let remoteId = this.content.remotePostId
-    if (this.content.bskyUri) {
-      console.log(this.content.bskyUri)
-      const parts = this.content.bskyUri.split('/app.bsky.feed.post/')
+    let remoteId = this.content().remotePostId
+    if (this.content().bskyUri) {
+      const parts = this.content().bskyUri!.split('/app.bsky.feed.post/')
       const userDid = parts[0].split('at://')[1]
       remoteId = `https://bsky.app/profile/${userDid}/post/${parts[1]}`
     }
@@ -116,9 +113,9 @@ export class PostActionsComponent implements OnChanges {
   }
 
   viewOriginalPost() {
-    let remoteId = this.content.remotePostId
-    if (this.content.bskyUri) {
-      const parts = this.content.bskyUri.split('/app.bsky.feed.post/')
+    let remoteId = this.content().remotePostId
+    if (this.content().bskyUri) {
+      const parts = this.content().bskyUri!.split('/app.bsky.feed.post/')
       const userDid = parts[0].split('at://')[1]
       remoteId = `https://bsky.app/profile/${userDid}/post/${parts[1]}`
     }
@@ -126,24 +123,24 @@ export class PostActionsComponent implements OnChanges {
   }
 
   viewOnBsky() {
-    if (this.content.bskyUri) {
-      const parts = this.content.bskyUri.split('/app.bsky.feed.post/')
+    if (this.content().bskyUri) {
+      const parts = this.content().bskyUri!.split('/app.bsky.feed.post/')
       const userDid = parts[0].split('at://')[1]
       window.open(`https://bsky.app/profile/${userDid}/post/${parts[1]}`, '_blank')
     }
   }
 
   async quickReblog() {
-    if (this.content?.privacy !== 10) {
+    if (this.content().privacy !== 10) {
       const response = await this.editor.createPost({
         content: '',
-        idPostToReblog: this.content.id,
+        idPostToReblog: this.content().id,
         privacy: 0,
         media: []
       })
       if (response) {
         const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
-        this.myRewootsIncludePost = true
+        this.myRewootsIncludePost.set(true);
         this.messages.add({
           severity: 'success',
           summary: 'You rewooted the woot!',
@@ -164,14 +161,14 @@ export class PostActionsComponent implements OnChanges {
   }
 
   replyPost() {
-    this.editor.replyPost(this.content)
+    this.editor.replyPost(this.content())
   }
   quoteWoot() {
-    this.editor.quotePost(this.content)
+    this.editor.quotePost(this.content())
   }
   async unlikePost() {
-    if (await this.postService.unlikePost(this.content.id)) {
-      this.content.userLikesPostRelations = this.content.userLikesPostRelations.filter((elem) => elem != this.myId)
+    if (await this.postService.unlikePost(this.content().id)) {
+      this.content().userLikesPostRelations = this.content().userLikesPostRelations.filter((elem) => elem != this.myId)
       this.messages.add({
         severity: 'success',
         summary: 'You successfully unliked this woot'
@@ -184,8 +181,8 @@ export class PostActionsComponent implements OnChanges {
     }
   }
   async likePost() {
-    if (await this.postService.likePost(this.content.id)) {
-      this.content.userLikesPostRelations.push(this.myId)
+    if (await this.postService.likePost(this.content().id)) {
+      this.content().userLikesPostRelations.push(this.myId)
       const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
       this.messages.add({
         severity: 'success',
@@ -200,8 +197,8 @@ export class PostActionsComponent implements OnChanges {
     }
   }
   async unbookmarkPost() {
-    if (await this.postService.unbookmarkPost(this.content.id)) {
-      this.content.bookmarkers = this.content.bookmarkers.filter((elem) => elem != this.myId)
+    if (await this.postService.unbookmarkPost(this.content().id)) {
+      this.content().bookmarkers = this.content().bookmarkers.filter((elem) => elem != this.myId)
       this.bookmarked.set(false);
       this.messages.add({
         severity: 'success',
@@ -215,8 +212,8 @@ export class PostActionsComponent implements OnChanges {
     }
   }
   async bookmarkPost() {
-    if (await this.postService.bookmarkPost(this.content.id)) {
-      this.content.bookmarkers.push(this.myId)
+    if (await this.postService.bookmarkPost(this.content().id)) {
+      this.content().bookmarkers.push(this.myId)
       const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
       this.bookmarked.set(true);
       this.messages.add({
@@ -232,33 +229,19 @@ export class PostActionsComponent implements OnChanges {
     }
   }
   reportPost() {
-    this.reportService.openReportPostDialog(this.content)
+    this.reportService.openReportPostDialog(this.content())
   }
   editPost() {
-    this.editor.replyPost(this.content, true)
+    this.editor.replyPost(this.content(), true)
   }
   deletePost() {
-    this.deletePostService.openDeletePostDialog(this.content.id)
-  }
-  async silencePost(superMute: boolean = false) {
-    if (await this.postService.silencePost(this.content.id, superMute)) {
-      this.messages.add({
-        severity: 'success',
-        summary: 'You successfully silenced the notifications for this woot'
-      })
-      await this.checkPostSilenced()
-    } else {
-      this.messages.add({
-        severity: 'error',
-        summary: 'Something went wrong. Please try again'
-      })
-    }
+    this.deletePostService.openDeletePostDialog(this.content().id)
   }
 
   async deleteRewoots() {
-    const success = await firstValueFrom(this.deletePostService.deleteRewoots(this.content.id))
+    const success = await firstValueFrom(this.deletePostService.deleteRewoots(this.content().id))
     if (success) {
-      this.myRewootsIncludePost = false
+      this.myRewootsIncludePost.set(false);
       this.messages.add({
         severity: 'success',
         summary: 'You successfully deleted your rewoot'
@@ -271,13 +254,28 @@ export class PostActionsComponent implements OnChanges {
     }
   }
 
+  async silencePost(superMute: boolean = false) {
+    if (await this.postService.silencePost(this.content().id, superMute)) {
+      this.postSilenced.set(true);
+      this.messages.add({
+        severity: 'success',
+        summary: 'You successfully silenced the notifications for this woot'
+      })
+    } else {
+      this.messages.add({
+        severity: 'error',
+        summary: 'Something went wrong. Please try again'
+      })
+    }
+  }
+
   async unsilencePost() {
-    if (await this.postService.unsilencePost(this.content.id)) {
+    if (await this.postService.unsilencePost(this.content().id)) {
+      this.postSilenced.set(false);
       this.messages.add({
         severity: 'success',
         summary: 'You successfully reactivated the notifications for this woot'
       })
-      await this.checkPostSilenced()
     } else {
       this.messages.add({
         severity: 'error',
@@ -287,6 +285,7 @@ export class PostActionsComponent implements OnChanges {
   }
 
   private async checkPostSilenced() {
-    this.postSilenced = (await this.utilsService.getSilencedPostIds()).includes(this.content.id)
+    let silence: boolean = (await this.utilsService.getSilencedPostIds()).includes(this.content().id);
+    this.postSilenced.set(silence);
   }
 }

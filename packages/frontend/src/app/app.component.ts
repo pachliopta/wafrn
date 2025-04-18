@@ -1,6 +1,5 @@
 import { Component, Injector, OnInit } from '@angular/core'
 import { SwUpdate } from '@angular/service-worker'
-import { LoginService } from './services/login.service'
 import { EnvironmentService } from './services/environment.service'
 import { TranslateService } from '@ngx-translate/core'
 import { SwPush } from '@angular/service-worker'
@@ -9,17 +8,12 @@ import { SwPush } from '@angular/service-worker'
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  standalone: false
+  standalone: false,
 })
 export class AppComponent implements OnInit {
-  title = 'wafrn'
-
   constructor(
     private swUpdate: SwUpdate,
     private swPush: SwPush,
-    private injector: Injector,
-    private loginService: LoginService,
-    private environmentService: EnvironmentService,
     private translate: TranslateService
   ) {
     this.translate.addLangs(['en', 'pl'])

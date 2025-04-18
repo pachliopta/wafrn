@@ -1,4 +1,4 @@
-import { Component, input, OnInit, SimpleChanges } from '@angular/core'
+import { ChangeDetectionStrategy, Component, input, OnInit, signal, SimpleChanges } from '@angular/core'
 import { SimplifiedUser } from 'src/app/interfaces/simplified-user'
 import { AvatarSmallComponent } from '../avatar-small/avatar-small.component'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
@@ -11,7 +11,8 @@ import { DateTime } from 'luxon'
   selector: 'app-post-ribbon',
   imports: [MatCardModule, AvatarSmallComponent, FontAwesomeModule, NgTemplateOutlet, NgClass],
   templateUrl: './post-ribbon.component.html',
-  styleUrl: './post-ribbon.component.scss'
+  styleUrl: './post-ribbon.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PostRibbonComponent implements OnInit {
   readonly user = input.required<SimplifiedUser>();
@@ -19,14 +20,13 @@ export class PostRibbonComponent implements OnInit {
   readonly time = input.required<Date>();
   readonly card = input(true);
 
-  timeAgo = ''
+  timeAgo = signal<string>('');
 
-  constructor() {}
+  constructor() { }
   ngOnInit(): void {
     // TODO unhardcode
     const relative = DateTime.fromJSDate(this.time()).setLocale('en').toRelative()
-    this.timeAgo = relative ? relative : 'ERROR GETING TIME'
+    this.timeAgo.set(relative ? relative : 'ERROR GETING TIME');
   }
 
-  ngOnChanges(changes: SimpleChanges): void {}
 }

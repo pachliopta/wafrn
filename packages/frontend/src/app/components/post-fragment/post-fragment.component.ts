@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common'
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
   input,
-  OnChanges,
   OnDestroy,
+  OnInit,
   output,
   signal,
   viewChild
@@ -60,19 +61,22 @@ type EmojiReaction = {
   ],
   templateUrl: './post-fragment.component.html',
   styleUrl: './post-fragment.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PostFragmentComponent implements OnChanges, OnDestroy {
+export class PostFragmentComponent implements OnInit, OnDestroy {
   fragment = input.required<ProcessedPost>()
   forceExpand = output<boolean>()
   showSensitiveContent = signal<boolean>(false);
+  reactionLoading = signal<boolean>(false);
   emojiCollection = signal<EmojiReaction[]>([]);
+
   likeSubscription!: Subscription
   emojiSubscription!: Subscription
   followsSubscription!: Subscription
+
   userId!: string
   availableEmojiNames: string[] = []
 
-  reactionLoading = signal<boolean>(false);
   sanitizedContent = ''
   noTagsContent = ''
   wafrnFormattedContent = computed(() => {
@@ -115,7 +119,7 @@ export class PostFragmentComponent implements OnChanges, OnDestroy {
 
   forceOldMediaStyle = localStorage.getItem('forceClassicMediaView') == 'true'
 
-  nonLinkMediaCount = 0
+  nonLinkMediaCount = signal<number>(0);
 
   constructor(
     private postService: PostsService,
@@ -153,11 +157,11 @@ export class PostFragmentComponent implements OnChanges, OnDestroy {
       }
     })
     this.initializeContent()
+    this.nonLinkMediaCount.set(this.fragment().medias.filter((elem) => elem.mediaType != 'text/html').length);
   }
 
   ngOnChanges(): void {
     this.initializeEmojis()
-    this.nonLinkMediaCount = this.fragment().medias.filter((elem) => elem.mediaType != 'text/html').length
   }
 
   initializeContent() {

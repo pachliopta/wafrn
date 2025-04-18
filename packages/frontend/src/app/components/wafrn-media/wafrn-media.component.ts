@@ -1,12 +1,13 @@
 import {
   AfterViewInit,
-  ChangeDetectorRef,
+  OnInit,
   Component,
   computed,
   ElementRef,
   input,
-  OnChanges,
-  ViewChild
+  signal,
+  ViewChild,
+  ChangeDetectionStrategy
 } from '@angular/core'
 import { WafrnMedia } from '../../interfaces/wafrn-media'
 import { EnvironmentService } from '../../services/environment.service'
@@ -20,9 +21,10 @@ import Vlitejs from 'vlitejs'
   selector: 'app-wafrn-media',
   templateUrl: './wafrn-media.component.html',
   styleUrls: ['./wafrn-media.component.scss'],
-  standalone: false
+  standalone: false,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class WafrnMediaComponent implements OnChanges, AfterViewInit {
+export class WafrnMediaComponent implements OnInit, AfterViewInit {
   data = input.required<WafrnMedia>()
 
   @ViewChild('videoelement') videoElement: ElementRef<HTMLVideoElement> | undefined
@@ -57,8 +59,7 @@ export class WafrnMediaComponent implements OnChanges, AfterViewInit {
 
   disableNSFWFilter = true
 
-  nsfw = true
-  viewLongImage = false
+  nsfw = signal<boolean>(true);
   descriptionVisible = false
   // Icons
   readonly hideIcon = faEyeSlash
@@ -66,15 +67,12 @@ export class WafrnMediaComponent implements OnChanges, AfterViewInit {
   errorMode = false
   constructor(
     private mediaService: MediaService,
-    private messagesService: MessageService,
-    private cdr: ChangeDetectorRef
   ) {
-    this.disableNSFWFilter = mediaService.checkNSFWFilterDisabled()
   }
 
-  ngOnChanges(): void {
-    this.nsfw = this.data().NSFW && !this.disableNSFWFilter
-    this.cdr.markForCheck()
+  ngOnInit(): void {
+    this.disableNSFWFilter = this.mediaService.checkNSFWFilterDisabled()
+    this.nsfw.set(this.data().NSFW && !this.disableNSFWFilter);
   }
 
   ngAfterViewInit(): void {
@@ -94,8 +92,7 @@ export class WafrnMediaComponent implements OnChanges, AfterViewInit {
   }
 
   showPicture() {
-    this.nsfw = false
-    this.viewLongImage = true
+    this.nsfw.set(false);
   }
 
   private getExtension() {

@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card'
 import { MatPaginatorModule } from '@angular/material/paginator'
 import { MatTableModule } from '@angular/material/table'
 import { MatButtonModule } from '@angular/material/button'
+import { LoaderComponent } from 'src/app/components/loader/loader.component'
 
 @NgModule({
   declarations: [MyServerBlocksComponent],
@@ -22,7 +23,8 @@ import { MatButtonModule } from '@angular/material/button'
     MatTableModule,
     MatCardModule,
     MatPaginatorModule,
-    MatButtonModule
+    MatButtonModule,
+    LoaderComponent
   ]
 })
-export class MyServerBlocksModule {}
+export class MyServerBlocksModule { }

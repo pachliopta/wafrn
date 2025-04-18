@@ -1,5 +1,6 @@
 <mat-card class="p-3 mb-6 lg:mx-4 wafrn-container">
-  <form [hidden]="loading" [formGroup]="editProfileForm" (ngSubmit)="onSubmit()">
+  <app-loader *ngIf=loading()>settings</app-loader>
+  <form [hidden]="loading()" [formGroup]="editProfileForm" (ngSubmit)="onSubmit()">
     <div class="pt-2 px-3 border-round-md mb-4" style="border: 1px solid #999">
       <label for="avatar" class="block font-medium mb-2">Choose another avatar</label>
       <input
@@ -144,7 +145,7 @@
     </div>
   </form>
 
-  <div [hidden]="loading" class="w-full">Extra information (Fediverse exclusive)</div>
+  <div [hidden]="loading()" class="w-full">Extra information (Fediverse exclusive)</div>
 
   @for (attachment of fediAttachments; track $index) {
     <form [hidden]="loading">
@@ -160,7 +161,7 @@
       </div>
     </form>
   }
-  <div [hidden]="loading" (click)="addFediAttachment()">+</div>
+  <div [hidden]="loading()" (click)="addFediAttachment()">+</div>
 
   <button
     (click)="onSubmit()"

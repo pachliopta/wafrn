@@ -1,4 +1,4 @@
-import { Component } from '@angular/core'
+import { Component, signal } from '@angular/core'
 import { BlocksService } from 'src/app/services/blocks.service'
 
 @Component({
@@ -9,21 +9,21 @@ import { BlocksService } from 'src/app/services/blocks.service'
 })
 export class MyServerBlocksComponent {
   serverBlocks: any[] = []
-  ready = false
+  loading = signal<boolean>(true);
   displayedColumns = ['muted', 'actions']
 
   constructor(private blocksService: BlocksService) {
     this.blocksService.getMyServerBlockList().then((backendResponse) => {
       this.serverBlocks = backendResponse
-      this.ready = true
+      this.loading.set(false);
     })
   }
 
   unblockServer(id: string) {
-    this.ready = false
+    this.loading.set(true);
     this.blocksService.unblockServer(id).then((response) => {
       this.serverBlocks = response
-      this.ready = true
+      this.loading.set(false);
     })
   }
 }

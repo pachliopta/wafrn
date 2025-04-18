@@ -1,4 +1,4 @@
-import { Component } from '@angular/core'
+import { Component, signal } from '@angular/core'
 import { BlocksService } from 'src/app/services/blocks.service'
 
 @Component({
@@ -9,19 +9,19 @@ import { BlocksService } from 'src/app/services/blocks.service'
 })
 export class MyBlocksComponent {
   blocks: Array<any> = []
-  loading = true
+  loading = signal<boolean>(true);
   displayedColumns = ['muted', 'actions']
 
   constructor(private blocksService: BlocksService) {
     this.blocksService.getBlockList().then((response) => {
       this.blocks = response
-      this.loading = false
+      this.loading.set(false);
     })
   }
 
   async unblockUser(id: string) {
-    this.loading = true
+    this.loading.set(true);
     this.blocks = await this.blocksService.unblockUser(id)
-    this.loading = false
+    this.loading.set(false);
   }
 }

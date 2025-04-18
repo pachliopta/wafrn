@@ -1,4 +1,8 @@
-<mat-card *ngIf="ready" class="p-3 mb-6 lg:mx-4 wafrn-container">
+<div class="mx-3 lg:mx-4 wafrn-container">
+   <h3 class="mb-2 text-3xl dashboard-title">My blocked servers</h3>
+</div>
+<app-loader *ngIf=loading()>blocked servers</app-loader>
+<mat-card *ngIf="!loading()" class="p-3 mb-6 lg:mx-4 wafrn-container">
   <table mat-table [dataSource]="serverBlocks">
     <!-- Position Column -->
     <ng-container matColumnDef="muted">
@@ -20,7 +24,7 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
   </table>
   <mat-paginator
-    *ngIf="false && ready"
+    *ngIf="false && !loading()"
     [pageSizeOptions]="[5, 10, 25, 50, 100]"
     showFirstLastButtons
     aria-label="Select page of periodic elements"

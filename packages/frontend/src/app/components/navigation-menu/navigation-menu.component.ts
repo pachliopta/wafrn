@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core'
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, signal, ViewEncapsulation } from '@angular/core'
 import { NavigationEnd, Router } from '@angular/router'
 import { Subscription } from 'rxjs'
 import { Action } from 'src/app/interfaces/editor-launcher-data'
@@ -36,9 +36,7 @@ import {
   faBellSlash,
   faIcons,
   faSkull,
-  faFileEdit,
   faPaintbrush,
-  IconDefinition,
   faBookmark
 } from '@fortawesome/free-solid-svg-icons'
 import { MenuItem } from 'src/app/interfaces/menu-item'
@@ -52,20 +50,21 @@ import { TranslateService } from '@ngx-translate/core'
   templateUrl: './navigation-menu.component.html',
   styleUrls: ['./navigation-menu.component.scss'],
   standalone: false,
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NavigationMenuComponent implements OnInit, OnDestroy {
-  menuItems: MenuItem[] = []
+  menuItems = signal<MenuItem[]>([]);
   maintenanceMode = EnvironmentService.environment.maintenance
   maintenanceMessage = EnvironmentService.environment.maintenanceMessage
-  menuVisible = false
-  notifications = 0
-  adminNotifications = 0
-  usersAwaitingApproval = 0
-  followsAwaitingApproval = 0
-  awaitingAsks = 0
-  privateMessagesNotifications = ''
-  mobile = false
+  menuVisible = signal<boolean>(false);
+  notifications = signal<number>(0);
+  adminNotifications = signal<number>(0);
+  usersAwaitingApproval = signal<number>(0);
+  followsAwaitingApproval = signal<number>(0);
+  awaitingAsks = signal<number>(0);
+  privateMessagesNotifications = signal<string>('');
+  mobile = signal<boolean>(false);
   logo = EnvironmentService.environment.logo
   defaultIcon = faQuestion
   navigationSubscription: Subscription
@@ -105,9 +104,9 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.drawMenu()
-    this.onResize()
-    this.menuVisible = !this.mobile
+    this.drawMenu();
+    this.onResize();
+    this.menuVisible.set(!this.mobile());
 
     // IMPORTANT: HIDE THE SPLASH SCREEN
     const splashElement = document.getElementById('splash')
@@ -121,16 +120,16 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
   }
 
   showMenu() {
-    this.menuVisible = true
+    this.menuVisible.set(true);
   }
 
   hideMenu() {
-    this.menuVisible = false
+    this.menuVisible.set(false);
     this.editorService.launchPostEditorEmitter.next({ action: Action.Close })
   }
 
   drawMenu() {
-    this.menuItems = [
+    this.menuItems.set([
       {
         label: 'Log in',
         icon: faHouse,
@@ -186,7 +185,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
         icon: faBell,
         title: this.translateService.instant('menu.notifications'),
         visible: this.jwtService.tokenValid(),
-        badge: this.notifications,
+        badge: this.notifications(),
         routerLink: '/dashboard/notifications',
         command: () => {
           this.hideMenu()
@@ -225,7 +224,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
         icon: faQuestion,
         title: this.translateService.instant('menu.unansweredAsks'),
         visible: this.jwtService.tokenValid(),
-        badge: this.awaitingAsks,
+        badge: this.awaitingAsks(),
         routerLink: '/profile/myAsks',
         command: () => {
           this.hideMenu()
@@ -246,7 +245,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
         icon: faPowerOff,
         title: this.translateService.instant('menu.admin.title'),
         visible: this.jwtService.adminToken(),
-        badge: this.adminNotifications + this.usersAwaitingApproval,
+        badge: this.adminNotifications() + this.usersAwaitingApproval(),
         items: [
           {
             label: this.translateService.instant('menu.admin.serverList'),
@@ -273,7 +272,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
             icon: faExclamationTriangle,
             title: this.translateService.instant('menu.admin.reports'),
             visible: true,
-            badge: this.adminNotifications,
+            badge: this.adminNotifications(),
             routerLink: '/admin/user-reports',
             command: () => {
               this.hideMenu()
@@ -314,7 +313,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
             icon: faUserLock,
             title: this.translateService.instant('menu.admin.awaitingAproval'),
             visible: true,
-            badge: this.usersAwaitingApproval,
+            badge: this.usersAwaitingApproval(),
             routerLink: '/admin/activate-users',
             command: () => {
               this.hideMenu()
@@ -337,14 +336,14 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
         icon: faCog,
         title: this.translateService.instant('menu.settings.title'),
         visible: this.jwtService.tokenValid(),
-        badge: this.followsAwaitingApproval,
+        badge: this.followsAwaitingApproval(),
         items: [
           {
             label: this.translateService.instant('menu.settings.follows'),
             icon: faUser,
             title: this.translateService.instant('menu.settings.follows'),
             visible: true,
-            badge: this.followsAwaitingApproval,
+            badge: this.followsAwaitingApproval(),
             routerLink: '/blog/' + this.jwtService.getTokenData().url + '/followers',
             command: () => {
               this.hideMenu()
@@ -518,21 +517,21 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
           this.hideMenu()
         }
       }
-    ]
+    ]);
   }
 
   async updateNotifications(url: string) {
     if (this.jwtService.tokenValid()) {
       const response = await this.notificationsService.getUnseenNotifications()
       if (url === '/dashboard/notifications') {
-        this.notifications = 0
+        this.notifications.set(0);
       } else {
-        this.notifications = response.notifications
+        this.notifications.set(response.notifications);
       }
-      this.adminNotifications = response.reports
-      this.usersAwaitingApproval = response.usersAwaitingApproval
-      this.followsAwaitingApproval = response.followsAwaitingApproval
-      this.awaitingAsks = response.asks
+      this.adminNotifications.set(response.reports);
+      this.usersAwaitingApproval.set(response.usersAwaitingApproval);
+      this.followsAwaitingApproval.set(response.followsAwaitingApproval);
+      this.awaitingAsks.set(response.asks);
       this.drawMenu()
       this.cdr.detectChanges()
     }
@@ -540,8 +539,8 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize', ['$event'])
   onResize() {
-    this.mobile = window.innerWidth <= 992
-    this.menuVisible = !this.mobile
+    this.mobile.set(window.innerWidth <= 992);
+    this.menuVisible.set(!this.mobile);
   }
 
   @HostListener('window:keydown.n')
@@ -554,6 +553,6 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
   }
 
   onCloseMenu() {
-    this.menuVisible = false
+    this.menuVisible.set(false);
   }
 }

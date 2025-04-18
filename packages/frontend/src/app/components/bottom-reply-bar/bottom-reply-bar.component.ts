@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, Input, OnChanges, signal, SimpleChanges } from '@angular/core'
+import { ChangeDetectionStrategy, Component, input, model, OnInit, signal } from '@angular/core'
 import { MatButtonModule } from '@angular/material/button'
 import { MatTooltipModule } from '@angular/material/tooltip'
 import { RouterModule } from '@angular/router'
@@ -37,17 +37,19 @@ import { PostsService } from 'src/app/services/posts.service'
   selector: 'app-bottom-reply-bar',
   imports: [CommonModule, RouterModule, FontAwesomeModule, MatButtonModule, MatTooltipModule],
   templateUrl: './bottom-reply-bar.component.html',
-  styleUrl: './bottom-reply-bar.component.scss'
+  styleUrl: './bottom-reply-bar.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BottomReplyBarComponent implements OnChanges {
-  @Input() fragment!: ProcessedPost
-  @Input() notes: string = ''
-  userLoggedIn = false
-  isEmptyReblog = false
-  myId = ''
-  loadingAction = false
-  myRewootsIncludePost = false
+export class BottomReplyBarComponent implements OnInit {
+  fragment = model.required<ProcessedPost>();
+  notes = input<string>('');
+  loadingAction = signal<boolean>(false);
   bookmarked = signal<boolean>(false);
+  myRewootsIncludePost = signal<boolean>(false);
+
+  userLoggedIn = false;
+  myId = '';
+
 
   // icons
   shareIcon = faShareNodes
@@ -71,7 +73,7 @@ export class BottomReplyBarComponent implements OnChanges {
   unbookmarkIcon = faBookBookmark
 
   constructor(
-    private loginService: LoginService,
+    loginService: LoginService,
     private postService: PostsService,
     private editorService: EditorService,
     private deletePostService: DeletePostService,
@@ -85,20 +87,8 @@ export class BottomReplyBarComponent implements OnChanges {
   }
 
   ngOnInit(): void {
-    this.bookmarked.set(this.fragment.bookmarkers.includes(this.myId));
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    this.myRewootsIncludePost = this.postService.rewootedPosts.includes(this.fragment.id)
-
-    const finalOne = this.fragment
-    this.isEmptyReblog =
-      this.fragment &&
-      finalOne.content == '' &&
-      finalOne.tags.length == 0 &&
-      finalOne.quotes.length == 0 &&
-      !finalOne.questionPoll &&
-      finalOne.medias?.length == 0
+    this.bookmarked.set(this.fragment().bookmarkers.includes(this.myId));
+    this.myRewootsIncludePost.set(this.postService.rewootedPosts.includes(this.fragment().id));
   }
 
   async replyPost(post: ProcessedPost) {
@@ -118,10 +108,10 @@ export class BottomReplyBarComponent implements OnChanges {
   }
 
   async deleteRewoots(id: string) {
-    this.loadingAction = true
+    this.loadingAction.set(true);
     const success = await firstValueFrom(this.deletePostService.deleteRewoots(id))
     if (success) {
-      this.myRewootsIncludePost = false
+      this.myRewootsIncludePost.set(false);
       this.messages.add({
         severity: 'success',
         summary: 'You successfully deleted your rewoot'
@@ -132,11 +122,11 @@ export class BottomReplyBarComponent implements OnChanges {
         summary: 'Something went wrong! Check your internet connectivity and try again'
       })
     }
-    this.loadingAction = false
+    this.loadingAction.set(false);
   }
 
   async likePost(postToLike: ProcessedPost) {
-    this.loadingAction = true
+    this.loadingAction.set(true);
     if (await this.postService.likePost(postToLike.id)) {
       postToLike.userLikesPostRelations.push(this.myId)
       const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
@@ -151,11 +141,11 @@ export class BottomReplyBarComponent implements OnChanges {
         summary: 'Something went wrong. Please try again'
       })
     }
-    this.loadingAction = false
+    this.loadingAction.set(false);
   }
 
   async unlikePost(postToUnlike: ProcessedPost) {
-    this.loadingAction = true
+    this.loadingAction.set(true);
     if (await this.postService.unlikePost(postToUnlike.id)) {
       postToUnlike.userLikesPostRelations = postToUnlike.userLikesPostRelations.filter((elem) => elem != this.myId)
       this.messages.add({
@@ -168,11 +158,15 @@ export class BottomReplyBarComponent implements OnChanges {
         summary: 'Something went wrong. Please try again'
       })
     }
-    this.loadingAction = false
+    this.loadingAction.set(false);
   }
+
   async unbookmarkPost() {
-    if (await this.postService.unbookmarkPost(this.fragment.id)) {
-      this.fragment.bookmarkers = this.fragment.bookmarkers.filter((elem) => elem != this.myId)
+    if (await this.postService.unbookmarkPost(this.fragment().id)) {
+      this.fragment.update((f) => {
+        f.bookmarkers = f.bookmarkers.filter((elem) => elem != this.myId);
+        return f;
+      });
       this.messages.add({
         severity: 'success',
         summary: 'You successfully unbookmarked this woot'
@@ -185,9 +179,13 @@ export class BottomReplyBarComponent implements OnChanges {
       })
     }
   }
+
   async bookmarkPost() {
-    if (await this.postService.bookmarkPost(this.fragment.id)) {
-      this.fragment.bookmarkers.push(this.myId)
+    if (await this.postService.bookmarkPost(this.fragment().id)) {
+      this.fragment.update((f) => {
+        f.bookmarkers.push(this.myId);
+        return f;
+      });
       const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
       this.messages.add({
         severity: 'success',
@@ -204,7 +202,7 @@ export class BottomReplyBarComponent implements OnChanges {
   }
 
   async quickReblog(postToBeReblogged: ProcessedPost) {
-    this.loadingAction = true
+    this.loadingAction.set(true);
     if (postToBeReblogged?.privacy !== 10) {
       const response = await this.editor.createPost({
         content: '',
@@ -215,7 +213,7 @@ export class BottomReplyBarComponent implements OnChanges {
       if (response) {
         const enableConfetti = localStorage.getItem('enableConfetti') == 'true'
 
-        this.myRewootsIncludePost = true
+        this.myRewootsIncludePost.set(true);
         this.messages.add({
           severity: 'success',
           summary: 'You rewooted the woot!',
@@ -233,6 +231,6 @@ export class BottomReplyBarComponent implements OnChanges {
         summary: 'Sorry, this woot is not rebloggeable as requested by the user'
       })
     }
-    this.loadingAction = false
+    this.loadingAction.set(false);
   }
 }
