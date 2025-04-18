@@ -57,17 +57,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // If the user clicks on the explore button while already on the page,
     // reload posts.
-    this.navigationSubscription = this.router.events
-      .pipe(filter((event) => event instanceof NavigationSkipped))
-      .subscribe(() => {
-        if (window.scrollY > 0) {
-          // This subscription fires twice and scrollPositionRestoration is
-          // not exactly helping here!
-          // window.scrollTo(0, 0)
-          return;
-        }
-        this.reloadPosts()
-      })
   }
   ngOnDestroy(): void {
     this.navigationSubscription.unsubscribe()
@@ -97,6 +86,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.title = 'My bookmarked posts'
     }
 
+    this.navigationSubscription = this.router.events
+      .pipe(filter((event) => event instanceof NavigationSkipped))
+      .subscribe(() => {
+        if (window.scrollY > 0) {
+          // This subscription fires twice and scrollPositionRestoration is
+          // not exactly helping here!
+          // window.scrollTo(0, 0)
+          return;
+        }
+        this.reloadPosts()
+      })
     this.updateFollowersSubscription = this.postService.updateFollowers.subscribe(() => {
       if (this.postService.followedUserIds.length <= 1 && this.level === 1 && false) {
         // if the user follows NO ONE we take them to the explore page!
@@ -128,11 +128,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 
   reloadPosts() {
-    window.scrollTo(0, 0)
     // Perhaps not a perfect solution, but without this guard currentPage and
     // startScroll may unexpectedly increase, leading to the dashboard
     // displaying posts that do not start from date.now
     if (this.loadingPosts()) return;
+    window.scrollTo(0, 0);
     this.posts.set([]);
     this.currentPage = 0
     this.viewedPostsNumber = 0

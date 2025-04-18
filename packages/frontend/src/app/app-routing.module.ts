@@ -111,6 +111,7 @@ const routes: Routes = [
       preloadingStrategy: PreloadAllModules,
       anchorScrolling: 'enabled',
       scrollPositionRestoration: 'enabled',
+      enableTracing: true
     }),
     NavigationMenuModule
   ],
@@ -127,10 +128,10 @@ export class AppRoutingModule {
         // Position is not null only on backwards navigation
         if (e.position !== null) {
           setTimeout(() => {
-            viewportScroller.scrollToPosition(e.position!);
+            // viewportScroller.scrollToPosition(e.position!);
           }, 100);
         } else if (e.anchor) {
-          viewportScroller.scrollToAnchor(e.anchor);
+          // viewportScroller.scrollToAnchor(e.anchor);
         }
       });
 

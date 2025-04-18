@@ -107,6 +107,7 @@ export class NavigationMenuComponent implements OnInit, OnDestroy {
     this.drawMenu();
     this.onResize();
     this.menuVisible.set(!this.mobile());
+    console.log("INIT");
 
     // IMPORTANT: HIDE THE SPLASH SCREEN
     const splashElement = document.getElementById('splash')
