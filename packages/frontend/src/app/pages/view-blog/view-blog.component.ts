@@ -162,7 +162,9 @@ export class ViewBlogComponent implements OnInit, OnDestroy {
       let userResponseToCustomThemes = this.themeService.hasUserAcceptedCustomThemes()
 
       if (userResponseToCustomThemes === 2) {
+        console.log(this.blogDetails());
         this.themeService.setTheme(this.blogDetails()!.id)
+        console.log("Theme set");
       }
 
       if (userResponseToCustomThemes === 0) {
